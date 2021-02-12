@@ -93,11 +93,11 @@ class inferenceModel(pints.ForwardModel):
         self.mode = mode
         return
     def n_parameters(self):
-        return 5
+        return 6
     def n_outputs(self):
         return 7
     def simulate(self, params, times):
-        params = np.multiply(np.asarray([2694.91, 400, 12, 0.0000027, 12, 400/60, 33/60, 58.8/60, 400/60, 400000/18000, 400000/18000, 400000/18000, 400000/18000, 400000/18000]), np.hstack([np.ones(9), params]))
+        params = np.multiply(np.asarray([2694.91, 400, 12, 0.0000027, 12, 400/60, 33/60, 58.8/60, 400/60, 400000/18000, 400000/18000, 400000/18000, 400000/18000, 400000/18000]), np.hstack([params[0], np.ones(8), params[1:]]))
         #y_ss = solve_ivp(crossPresModels.no_erap_ss, [0, 1000000], np.zeros(8), args = tuple(params), method='LSODA').y.T[-1, :].astype(int)
         #y0 = np.hstack([np.zeros(5), y_ss[0:4], np.zeros(5), y_ss[4], np.zeros(5), y_ss[5], np.zeros(5), y_ss[6:]])
         if self.mode == 0:
@@ -111,7 +111,7 @@ class inferenceModel(pints.ForwardModel):
         return sol.y[21:, :].astype(int).astype(float).T
        
 if __name__ == '__main__':
-    default_params = np.ones(5)
+    default_params = np.ones(6)
     # mode = 1 because we want to fit supply rates to model without ERAP!
     model = inferenceModel(mode=1)
     times = 60*np.asarray([0, 15, 30, 60, 90, 120, 180, 240, 300, 360])#np.linspace(0, 360*60, 360)
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         noisy_data = np.loadtxt('noisy_data0.txt')
     except:
         noisy_data = data + pints.noise.multiplicative_gaussian(1, 0.1, data)
-        np.savetxt('data/supplyRatesData.txt', noisy_data)
+        np.savetxt('data/allSupplyRatesData.txt', noisy_data)
 
     # fit to this data using MCMC
 
@@ -150,4 +150,4 @@ if __name__ == '__main__':
         print(pints.rhat(chains[:, :, :]))
 
     for i in range(3):
-        np.savetxt('results/supplyRates_' + str(i + 1), chains[i, :, :])
+        np.savetxt('results/allSupplyRates_' + str(i + 1), chains[i, :, :])

@@ -3,9 +3,6 @@ from matplotlib import pyplot as plt
 import numpy as np
 import crossPresModels as crossPresModels
 from scipy.integrate import solve_ivp
-import arviz as az
-
-az.style.use("arviz-darkgrid")
 
 class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
     r"""
@@ -137,14 +134,7 @@ if __name__ == '__main__':
         noisy_data = np.loadtxt('noisy_data0.txt')
     except:
         noisy_data = data + pints.noise.multiplicative_gaussian(1, 0.1, data)
-        np.savetxt('results/noisy_data_supplyRates_noSelf_multiplicative.txt', noisy_data)
-    
-    #plt.plot(times/60, data[:, :-2])
-    # for i in range(data.shape[1] - 2):
-    #     plt.scatter(times/60, noisy_data[:, i], s=15.5, marker='o')
-    # plt.xlabel('Time (mins)')
-    # plt.ylabel('pMHC Number')
-    # plt.show()
+        np.savetxt('data/supplyRatesData.txt', noisy_data)
 
     # fit to this data using MCMC
 
@@ -159,7 +149,7 @@ if __name__ == '__main__':
     mcmc.set_max_iterations(2000)
     chains = mcmc.run()
     reps = 1
-    while max(pints.rhat(chains[:, :, :])) > 1.10 and reps < 50:
+    while max(pints.rhat(chains[:, :, :])) > 1.10:
         mcmc = pints.MCMCController(log_posterior, 3, chains[:, -1, :], method=pints.HaarioBardenetACMC)
         mcmc.set_parallel(False)
         mcmc.set_max_iterations(2000)
@@ -173,4 +163,4 @@ if __name__ == '__main__':
         print(pints.rhat(chains[:, :, :]))
 
     for i in range(3):
-        np.savetxt('results/parameter_chain_supplies_disc_self_multiplicative_' + str(i + 1), chains[i, :, :])
+        np.savetxt('results/supplyRates_' + str(i + 1), chains[i, :, :])

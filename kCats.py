@@ -59,7 +59,7 @@ class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
         # Get number of times and number of outputs
         self._nt = len(self._times)
         no = problem.n_outputs()
-        self._np = 2  # 2 parameters added per output
+        self._np = 1  # 2 parameters added per output
 
         # Add parameters to problem
         self._n_parameters = problem.n_parameters() + self._np
@@ -69,7 +69,6 @@ class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
 
     def __call__(self, x):
         # Get noise parameters
-        eta = x[-2]
         sigma = x[-1]
 
         # Evaluate function (n_times, n_output)
@@ -81,10 +80,10 @@ class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
         # Compute likelihood
         log_likelihood = \
             -self._logn - np.nansum(
-                np.nansum(np.log(function_values**eta * sigma), axis=0)
+                np.nansum(np.log(function_values * sigma), axis=0)
                 + 0.5 / sigma**2 * np.nansum(
                     (self._values - function_values)**2
-                    /function_values ** (2 * eta), axis=0))
+                    /function_values ** 2, axis=0))
         return log_likelihood
 
 class inferenceModel(pints.ForwardModel):
@@ -125,7 +124,7 @@ if __name__ == '__main__':
 
     # fit to this data using MCMC
 
-    default_params_noise = np.hstack([default_params, 1, 0.1]) # we add 2 unknowns (eta and sigma) for the multiplicative noise
+    default_params_noise = np.hstack([default_params, 0.1]) # we add a new unknown (sigma) for the multiplicative noise
     problem = pints.MultiOutputProblem(model, times, noisy_data)
     log_prior = pints.UniformLogPrior(pints.RectangularBoundaries(0.1*default_params_noise, 10*default_params_noise))
     log_likelihood = MultiplicativeGaussianLogLikelihood(problem)
@@ -133,10 +132,10 @@ if __name__ == '__main__':
 
     mcmc = pints.MCMCController(log_posterior, 3, [default_params_noise, default_params_noise*0.8, default_params_noise*1.25], method=pints.HaarioBardenetACMC)
     mcmc.set_parallel(False)
-    mcmc.set_max_iterations(2000)
+    mcmc.set_max_iterations(200)
     chains = mcmc.run()
     reps = 1
-    while max(pints.rhat(chains[:, :, :])) > 1.10:
+    while max(pints.rhat(chains[:, :, :])) > 1.10 or min(pints.effective_sample_size(chains[0, :, :-1])) < 450:
         mcmc = pints.MCMCController(log_posterior, 3, chains[:, -1, :], method=pints.HaarioBardenetACMC)
         mcmc.set_parallel(False)
         mcmc.set_max_iterations(2000)

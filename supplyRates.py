@@ -9,26 +9,19 @@ class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
     Calculates the log-likelihood for a time-series model assuming a
     heteroscedastic Gaussian error of the model predictions
     :math:`f(t, \theta )`.
-
     This likelihood introduces two new scalar parameters for each dimension of
     the model output: an exponential power :math:`\eta` and a scale
     :math:`\sigma`.
-
     A heteroscedascic Gaussian noise model assumes that the observable
     :math:`X` is Gaussian distributed around the model predictions
     :math:`f(t, \theta )` with a standard deviation that scales with
     :math:`f(t, \theta )`
-
     .. math::
         X(t) = f(t, \theta) + \sigma f(t, \theta)^\eta v(t)
-
     where :math:`v(t)` is a standard i.i.d. Gaussian random variable
-
     .. math::
         v(t) \sim \mathcal{N}(0, 1).
-
     This model leads to a log likelihood of the model parameters of
-
     .. math::
         \log{L(\theta, \eta , \sigma | X^{\text{obs}})} =
             -\frac{n_t}{2} \log{2 \pi}
@@ -36,12 +29,9 @@ class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
             -\frac{1}{2}\sum_{i=1}^{n_t}\left(
                 \frac{X^{\text{obs}}_{i} - f(t_i, \theta)}
                 {f(t_i, \theta)^\eta \sigma}\right) ^2,
-
     where :math:`n_t` is the number of time points in the series, and
     :math:`X^{\text{obs}}_{i}` the measurement at time :math:`t_i`.
-
     For a system with :math:`n_o` outputs, this becomes
-
     .. math::
         \log{L(\theta, \eta , \sigma | X^{\text{obs}})} =
             -\frac{n_t n_o}{2} \log{2 \pi}
@@ -50,13 +40,10 @@ class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
             -\frac{1}{2}\sum ^{n_o}_{j=1}\sum_{i=1}^{n_t}\left(
                 \frac{X^{\text{obs}}_{ij} - f_j(t_i, \theta)}
                 {f_j(t_i, \theta)^\eta \sigma _j}\right) ^2,
-
     where :math:`n_o` is the number of outputs of the model, and
     :math:`X^{\text{obs}}_{ij}` the measurement of output :math:`j` at
     time point :math:`t_i`.
-
     Extends :class:`ProblemLogLikelihood`.
-
     Parameters
     ----------
     ``problem``
@@ -72,7 +59,7 @@ class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
         # Get number of times and number of outputs
         self._nt = len(self._times)
         no = problem.n_outputs()
-        self._np = 2  # 2 parameters added per output
+        self._np = 1  # 2 parameters added per output
 
         # Add parameters to problem
         self._n_parameters = problem.n_parameters() + self._np
@@ -82,7 +69,6 @@ class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
 
     def __call__(self, x):
         # Get noise parameters
-        eta = x[-2]
         sigma = x[-1]
 
         # Evaluate function (n_times, n_output)
@@ -94,10 +80,10 @@ class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
         # Compute likelihood
         log_likelihood = \
             -self._logn - np.nansum(
-                np.nansum(np.log(function_values**eta * sigma), axis=0)
+                np.nansum(np.log(function_values * sigma), axis=0)
                 + 0.5 / sigma**2 * np.nansum(
                     (self._values - function_values)**2
-                    /function_values ** (2 * eta), axis=0))
+                    /function_values ** 2, axis=0))
         return log_likelihood
 
 class inferenceModel(pints.ForwardModel):
@@ -149,7 +135,7 @@ if __name__ == '__main__':
     mcmc.set_max_iterations(2000)
     chains = mcmc.run()
     reps = 1
-    while max(pints.rhat(chains[:, :, :])) > 1.10:
+    while max(pints.rhat(chains[:, :, :])) > 1.10 or min(pints.effective_sample_size(chains[0, :, :-1])) < 450:
         mcmc = pints.MCMCController(log_posterior, 3, chains[:, -1, :], method=pints.HaarioBardenetACMC)
         mcmc.set_parallel(False)
         mcmc.set_max_iterations(2000)
